@@ -1,0 +1,6 @@
+[workspace]
+members = [ "test-project",
+    "veracity-core",
+    "veracity-data",
+    "veracity-dl", 
+    "test-project", "veracity-types"]
