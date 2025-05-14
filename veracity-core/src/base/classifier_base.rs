@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 
 use ndarray::Array1;
 use ndarray::Array2;
-use ndarray::ArrayBase;
 use ndarray::Dimension;
-use ndarray::OwnedRepr;
 use num_traits::Num;
 use veracity_data::data_matrix::DataMatrix;
 use veracity_data::data_vector::DataVector;

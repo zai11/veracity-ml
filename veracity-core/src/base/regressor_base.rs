@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
-
-use ndarray::{Array1, Array2, ArrayBase, Dimension, OwnedRepr};
+use ndarray::{Array1, Array2, Dimension};
 use num_traits::Num;
 use veracity_data::{data_matrix::DataMatrix, data_vector::DataVector};
 use veracity_types::errors::VeracityError;
