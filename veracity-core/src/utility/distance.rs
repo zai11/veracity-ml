@@ -43,12 +43,12 @@ pub fn find_distance_manhatten<T: Num + ToPrimitive + Copy>(a: &ArrayView1<T>, b
         .sum()
 }
 
-pub fn find_distance_minkowski<T: Num + ToPrimitive + Copy>(a: &ArrayView1<T>, b: &ArrayView1<T>, p: i64) -> f64 {
+pub fn find_distance_minkowski<T: Num + ToPrimitive + Copy>(a: &ArrayView1<T>, b: &ArrayView1<T>, p: &i64) -> f64 {
     a.iter()
         .zip(b.iter())
-        .map(|(x, y)| (x.to_f64().unwrap() - y.to_f64().unwrap()).abs().powf(p as f64))
+        .map(|(x, y)| (x.to_f64().unwrap() - y.to_f64().unwrap()).abs().powf(*p as f64))
         .sum::<f64>()
-        .powf(1.0 / p as f64)
+        .powf(1.0 / *p as f64)
 }
 
 pub fn find_distance_nan_euclidean<T: Num + ToPrimitive + Copy>(a: &ArrayView1<T>, b: &ArrayView1<T>) -> f64 {

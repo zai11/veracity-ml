@@ -230,7 +230,7 @@ impl fmt::Display for DataMatrix {
                             let value = vec.get(row).map(String::as_str).unwrap_or("");
                             write!(f, " {:^width$} |", value, width = width)?;
                         }
-                        _ => println!("Unknown dtype '{}'", dtype),
+                        _ => writeln!(f, "Unknown dtype '{}'", dtype)?,
                     }
                 }
             }

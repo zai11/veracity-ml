@@ -1,3 +1,1 @@
-pub trait ClassifierSettingsBase {}
-
-pub trait RegressorSettingsBase {}
+pub trait SettingsBase {}
