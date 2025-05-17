@@ -13,13 +13,13 @@ where
         return 0.0;
     }
 
-    let positive_class = match y_actual.first() {
+    let positive_class: &U = match y_actual.first() {
         Some(val) => val,
         None => return 0.0,
     };
 
-    let mut true_negatives = 0.0;
-    let mut false_positives = 0.0;
+    let mut true_negatives: f64 = 0.0;
+    let mut false_positives: f64 = 0.0;
 
     for (pred, actual) in y_pred.iter().zip(y_actual.iter()) {
         if actual != positive_class {

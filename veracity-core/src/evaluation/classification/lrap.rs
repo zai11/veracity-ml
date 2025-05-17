@@ -1,4 +1,4 @@
-use ndarray::{Array2, Data};
+use ndarray::Array2;
 use veracity_data::data_matrix::DataMatrix;
 
 pub fn _lrap<T, U>(y_pred: &Array2<T>, y_true: &Array2<U>) -> f64
