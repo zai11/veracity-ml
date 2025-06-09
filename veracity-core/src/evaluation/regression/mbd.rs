@@ -1,8 +1,10 @@
 use ndarray::Array1;
-use veracity_data::data_vector::DataVector;
+use veracity_data::data_vector::{DataVector, TDataVectorExt};
+
+use crate::enums::errors::metric_errors::EvaluationMetricError;
 
 
-pub fn _mbd<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> f64
+pub fn _mbd<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<f64> + Copy + Send + Sync + 'static,
@@ -14,7 +16,7 @@ where
     );
 
     if y_pred.is_empty() {
-        return f64::NAN;
+        return Ok(f64::NAN);
     }
 
     let mut total_bias: f64 = 0.0;
@@ -31,16 +33,16 @@ where
     }
 
     if valid_count == 0 {
-        f64::NAN
+        Ok(f64::NAN)
     } else {
-        (total_bias / valid_count as f64) * 100.0
+        Ok((total_bias / valid_count as f64) * 100.0)
     }
 }
 
-pub fn mbd<T, U>(y_pred: &DataVector, y_actual: &DataVector) -> f64
+pub fn mbd<T, U>(y_pred: &DataVector<T>, y_actual: &DataVector<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<f64> + Copy + Send + Sync + 'static
 {
-    _mbd(&y_pred.to_ndarray::<T>().unwrap(), &y_actual.to_ndarray::<U>().unwrap())
+    _mbd(&y_pred.to_ndarray().unwrap(), &y_actual.to_ndarray().unwrap())
 }

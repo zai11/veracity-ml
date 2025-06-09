@@ -1,160 +1,151 @@
-use std::any::Any;
+use std::{any::Any, fmt::{self, Display}};
 
+use itertools::Itertools;
 use ndarray::Array1;
 
 use crate::enums::error_types::DataLoaderError;
 
-pub struct DataVector {
-    pub label: Option<String>,
-    pub data: Box<dyn Any + Send + Sync>,
-    pub len: usize,
-    pub dtype: Option<&'static str>
+pub trait TDataVector
+{
+    fn len(&self) -> usize;
+    fn as_any(&self) -> &dyn Any;
+    fn dtype(&self) -> &'static str;
+    fn add_label(&mut self, label: &str);
+    fn get_label(&self) -> Option<String>;
+    fn get_data(&self) -> &dyn Any;
+    fn append(&mut self, value: &dyn Any) -> Result<(), DataLoaderError>;
 }
 
-impl DataVector {
-    pub fn new() -> Self {
+pub trait TDataVectorExt<T> : TDataVector
+where 
+    T: Clone + Send + Sync + 'static
+{
+    fn new() -> Self where Self: Sized;
+    fn from_vec(vec: Vec<T>) -> Result<Self, DataLoaderError> where Self: Sized;
+    fn to_vec(&self) -> Result<Vec<T>, DataLoaderError>;
+    fn from_ndarray(arr: Array1<T>) -> Result<Self, DataLoaderError> where Self: Sized;
+    fn to_ndarray(&self) -> Result<Array1<T>, DataLoaderError>;
+    fn iter(&self) -> Result<impl Iterator<Item = &T>, DataLoaderError>;
+    fn iter_mut(&mut self) -> Result<impl Iterator<Item = &mut T>, DataLoaderError>;
+    fn get(&self, index: usize) -> Result<Option<&T>, DataLoaderError>;
+    fn get_mut(&mut self, index: usize) -> Result<Option<&mut T>, DataLoaderError>;
+}
+
+pub struct DataVector<T> {
+    label: Option<String>,
+    data: Vec<T>
+}
+
+impl<T> TDataVector for DataVector<T>
+where 
+    T: Clone + Send + Sync + 'static
+{
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn dtype(&self) -> &'static str {
+        std::any::type_name::<T>()
+    }
+
+    fn add_label(&mut self, label: &str) {
+        self.label = Some(label.to_string());
+    }
+
+    fn get_label(&self) -> Option<String> {
+        self.label.clone()
+    }
+
+    fn get_data(&self) -> &dyn Any {
+        &self.data
+    }
+
+    fn append(&mut self, value: &dyn Any) -> Result<(), DataLoaderError> {
+        let value = value
+            .downcast_ref::<T>()
+            .ok_or_else(|| DataLoaderError::GenericError("Error converting passed value to T".to_string()))?;
+        self.data.push(value.clone());
+        Ok(())
+    }
+}
+
+impl<T> TDataVectorExt<T> for DataVector<T>
+where
+    T: Clone + Send + Sync + 'static
+{
+    fn new() -> Self {
         DataVector { 
             label: None, 
-            data: Box::new(0),
-            len: 0,
-            dtype: None
+            data: Vec::new()
         }
     }
 
-    pub fn from_vec<T: Clone + Send + Sync + 'static>(vec: Vec<T>) -> Result<Self, DataLoaderError> {
-        let len: usize = vec.len();
-        let dtype: Option<&'static str> = Some(std::any::type_name::<T>());
+    fn from_vec(vec: Vec<T>) -> Result<Self, DataLoaderError> {
         Ok(DataVector {
             label: None,
-            data: Box::new(vec),
-            len,
-            dtype
+            data: vec,
         })
     }
 
-    pub fn to_vec<T: Clone + Send + Sync + 'static>(&self) -> Result<Vec<T>, DataLoaderError> {
-        self.data.downcast_ref::<Vec<T>>().ok_or(
-            DataLoaderError::GenericError("Failed to cast data to Vec<T>".to_string())
-        ).cloned()
+    fn to_vec(&self) -> Result<Vec<T>, DataLoaderError> {
+        Ok(self.data.to_owned())
     }
 
-    pub fn from_ndarray<T: Clone + Send + Sync + 'static>(arr: Array1<T>) -> Result<Self, DataLoaderError> {
-        let dtype: Option<&'static str> = Some(std::any::type_name::<T>());
+    fn from_ndarray(arr: Array1<T>) -> Result<Self, DataLoaderError> {
         Ok(DataVector {
             label: None,
-            data: Box::new(arr.to_vec()),
-            len: arr.len(),
-            dtype
+            data: arr.to_vec(),
         })
     }
 
-    pub fn to_ndarray<T: Clone + Send + Sync + 'static>(&self) -> Result<Array1<T>, DataLoaderError> {
-        let vec: Vec<T> = self.to_vec()?;
-        Ok(Array1::from_vec(vec))
+    fn to_ndarray(&self) -> Result<Array1<T>, DataLoaderError> {
+        Ok(Array1::from_vec(self.data.clone()))
     }
 
-    pub fn add_label(&mut self, label: impl AsRef<str>) {
-        self.label = Some(label.as_ref().to_string());
+    fn iter(&self) -> Result<impl Iterator<Item = &T>, DataLoaderError> {
+        Ok(self.data.iter())
     }
 
-    pub fn iter<T: Clone + Send + Sync + 'static>(&self) -> Result<impl Iterator<Item = &T>, DataLoaderError> {
-        self.data
-            .downcast_ref::<Vec<T>>()
-            .map(|vec| vec.iter())
-            .ok_or(DataLoaderError::GenericError(
-                "Failed to downcast to Vec<T> in iter".to_string(),
-            ))
+    fn iter_mut(&mut self) -> Result<impl Iterator<Item = &mut T>, DataLoaderError> {
+        Ok(self.data.iter_mut())
     }
 
-    pub fn iter_mut<T: 'static>(&mut self) -> Result<impl Iterator<Item = &mut T>, DataLoaderError> {
-        self.data
-            .downcast_mut::<Vec<T>>()
-            .map(|vec: &mut Vec<T>| vec.iter_mut())
-            .ok_or(DataLoaderError::GenericError(
-                "Failed to downcast to Vec<T> for iter_mut".to_string(),
-            ))
+    fn get(&self, index: usize) -> Result<Option<&T>, DataLoaderError> {
+        Ok(self.data.get(index))
     }
 
-    pub fn get<T: Clone + Send + Sync + 'static>(&self, index: usize) -> Result<Option<&T>, DataLoaderError> {
-        let vec: &Vec<T> = self
-            .data
-            .downcast_ref::<Vec<T>>()
-            .ok_or(DataLoaderError::GenericError(
-                "Failed to downcast to Vec<T> in get".to_string(),
-            ))?;
-        Ok(vec.get(index))
+    fn get_mut(&mut self, index: usize) -> Result<Option<&mut T>, DataLoaderError> {
+        Ok(self.data.get_mut(index))
     }
-
-    pub fn get_mut<T: Clone + Send + Sync + 'static>(&mut self, index: usize) -> Result<Option<&mut T>, DataLoaderError> {
-        let vec: &mut Vec<T> = self
-            .data
-            .downcast_mut::<Vec<T>>()
-            .ok_or(DataLoaderError::GenericError(
-                "Failed to downcast to Vec<T> in get_mut".to_string(),
-            ))?;
-        Ok(vec.get_mut(index))
-    }
-
-    
 }
 
-impl Clone for DataVector {
+impl<T: Clone + Send + Sync + 'static> Clone for DataVector<T> {
     fn clone(&self) -> Self {
-        let label = self.label.clone();
-        let dtype = self.dtype;
-
-        let len = self.len;
-
-        let data = if let Some(data_ref) = self.data.downcast_ref::<Vec<i64>>() {
-            Box::new(data_ref.clone()) as Box<dyn Any + Send + Sync>
-        } else if let Some(data_ref) = self.data.downcast_ref::<Vec<f64>>() {
-            Box::new(data_ref.clone()) as Box<dyn Any + Send + Sync>
-        } else if let Some(data_ref) = self.data.downcast_ref::<Vec<bool>>() {
-            Box::new(data_ref.clone()) as Box<dyn Any + Send + Sync>
-        } else if let Some(data_ref) = self.data.downcast_ref::<Vec<String>>() {
-            Box::new(data_ref.clone()) as Box<dyn Any + Send + Sync>
-        } else {
-            unimplemented!("Clone not implemented for this data type")
-        };
-
         DataVector {
-            label,
-            data,
-            len,
-            dtype,
+            label: self.label.clone(),
+            data: self.data.clone(),
         }
     }
 }
 
-impl std::fmt::Debug for DataVector {
+impl<T: Clone + Send + Sync + 'static> std::fmt::Debug for DataVector<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DataVector {{ label: {:?}, len: {} }}", self.label, self.len)
+        write!(f, "DataVector {{ label: {:?}, len: {} }}", self.label, self.data.len())
     }
 }
 
-impl std::fmt::Display for DataVector {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Ok(if let Some(dtype) = self.dtype {
-            print!("{}: ", self.label.clone().unwrap_or(" ".to_string()));
-            match dtype {
-                "bool" => {
-                    let vec = self.data.downcast_ref::<Vec<bool>>().unwrap();
-                    writeln!(f, "{:?}", vec)?;
-                }
-                "i64" => {
-                    let vec = self.data.downcast_ref::<Vec<i64>>().unwrap();
-                    writeln!(f, "{:?}", vec)?;
-                }
-                "f64" => {
-                    let vec = self.data.downcast_ref::<Vec<f64>>().unwrap();
-                    writeln!(f, "{:?}", vec)?;
-                }
-                "alloc::string::String" | "String" => {
-                    let vec = self.data.downcast_ref::<Vec<String>>().unwrap();
-                    writeln!(f, "{:?}", vec)?;
-                }
-                _ => writeln!(f, "Unknown dtype '{}'", dtype)?
-            }
-        })
+impl<T: Clone + Display + Send + Sync + 'static> Display for DataVector<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label: String = self.label.clone().unwrap_or_else(|| " ".to_string());
+        let joined_data = self.data.iter().map(|x: &T| x.to_string()).join(" ");
+        write!(f, "{}: {}", label, joined_data)
     }
+}
+
+pub fn downcast_ref<T: 'static>(v: &dyn TDataVector) -> Option<&DataVector<T>> {
+    v.as_any().downcast_ref::<DataVector<T>>()
 }

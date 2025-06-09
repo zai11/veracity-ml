@@ -7,3 +7,6 @@ edition = "2024"
 async-trait = "0.1.88"
 ndarray = "0.16.1"
 veracity-types = { path = "../veracity-types" }
+polars = { git = "https://github.com/pola-rs/polars" }
+itertools = "0.14.0"
+indexmap = "2.9.0"

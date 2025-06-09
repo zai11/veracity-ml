@@ -5,6 +5,7 @@ pub enum VeracityError {
     DataLoader(String),
     Classifier(String),
     Regressor(String),
+    EvaluationMetric(String),
     NotImplemented,
     GenericError(String)
 }
@@ -14,7 +15,8 @@ impl fmt::Display for VeracityError {
         match self {
             VeracityError::DataLoader(e) => write!(f, "An error occurred while loading data:\r\n{:#?}", e),
             VeracityError::Classifier(e) => write!(f, "An error occurred in a classification model:\r\n{:#?}", e),
-            VeracityError::Regressor(e) => write!(f, "An error called in a regression model:\r\n{:#?}", e),
+            VeracityError::Regressor(e) => write!(f, "An error occurred in a regression model:\r\n{:#?}", e),
+            VeracityError::EvaluationMetric(e) => write!(f, "An error occurred in an evaluation metric:\r\n{:#?}", e),
             VeracityError::NotImplemented => write!(f, "The called function is not implemented"),
             VeracityError::GenericError(e) => write!(f, "{:#?}", e),
         }

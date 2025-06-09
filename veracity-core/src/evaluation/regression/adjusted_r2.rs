@@ -1,7 +1,9 @@
 use ndarray::Array1;
-use veracity_data::data_vector::DataVector;
+use veracity_data::data_vector::{DataVector, TDataVectorExt};
 
-pub fn _adjusted_r2<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>, num_features: &usize) -> f64
+use crate::enums::errors::metric_errors::EvaluationMetricError;
+
+pub fn _adjusted_r2<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>, num_features: &usize) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<f64> + Copy + Send + Sync + 'static,
@@ -42,13 +44,13 @@ where
 
     let r2: f64 = 1.0 - (ss_res / ss_total);
 
-    1.0 - (1.0 - r2) * ((n - 1.0) as f64) / ((n - num_features - 1.0) as f64)
+    Ok(1.0 - (1.0 - r2) * ((n - 1.0) as f64) / ((n - num_features - 1.0) as f64))
 }
 
-pub fn adjusted_r2<T, U>(y_pred: &DataVector, y_actual: &DataVector, num_features: &usize) -> f64
+pub fn adjusted_r2<T, U>(y_pred: &DataVector<T>, y_actual: &DataVector<U>, num_features: &usize) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<f64> + Copy + Send + Sync + 'static
 {
-    _adjusted_r2(&y_pred.to_ndarray::<T>().unwrap(), &y_actual.to_ndarray::<U>().unwrap(), num_features)
+    _adjusted_r2(&y_pred.to_ndarray().unwrap(), &y_actual.to_ndarray().unwrap(), num_features)
 }

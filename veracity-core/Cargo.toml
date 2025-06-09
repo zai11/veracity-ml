@@ -8,3 +8,5 @@ ndarray = "0.16.1"
 num-traits = "0.2.19"
 veracity-data = { path = "../veracity-data" }
 veracity-types = { path = "../veracity-types" }
+polars = { git = "https://github.com/pola-rs/polars" }
+indexmap = "2.9.0"

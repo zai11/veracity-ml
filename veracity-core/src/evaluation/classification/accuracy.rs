@@ -1,26 +1,21 @@
-use ndarray::Array1;
-use veracity_data::data_vector::DataVector;
+use veracity_data::data_vector::{DataVector, TDataVectorExt};
+use crate::enums::errors::metric_errors::EvaluationMetricError;
 
-pub fn _accuracy<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> f64
-where
-    T: PartialEq<U> + Clone + Send + Sync + 'static,
+pub fn accuracy<U: PartialEq>(y_true: &DataVector<U>, y_pred: &DataVector<U>) -> Result<f64, EvaluationMetricError>
+where 
     U: Clone + Send + Sync + 'static
 {
-    assert_eq!(y_pred.len(), y_actual.len(), "Arrays must be the same length.");
+    let true_vals: Vec<U> = y_true.to_vec().map_err(|e| EvaluationMetricError::GenericError(e.to_string()))?;
+    let pred_vals: Vec<U> = y_pred.to_vec().map_err(|e| EvaluationMetricError::GenericError(e.to_string()))?;
 
-    let correct: usize = y_pred
-        .iter()
-        .zip(y_actual.iter())
-        .filter(|(pred, actual)| pred == actual)
+    if true_vals.len() != pred_vals.len() {
+        return Err(EvaluationMetricError::GenericError("Vectors have different lengths".to_string()));
+    }
+
+    let correct: usize = true_vals.iter()
+        .zip(pred_vals.iter())
+        .filter(|(a, b)| a == b)
         .count();
 
-    correct as f64 / y_pred.len() as f64
-}
-
-pub fn accuracy<T, U>(y_pred: &DataVector, y_actual: &DataVector) -> f64
-where
-    T: PartialEq<U> + Clone + Send + Sync + 'static,
-    U: Clone + Send + Sync + 'static
-{
-    _accuracy(&y_pred.to_ndarray::<T>().unwrap(), &y_actual.to_ndarray::<U>().unwrap())
+    Ok(correct as f64 / true_vals.len() as f64)
 }

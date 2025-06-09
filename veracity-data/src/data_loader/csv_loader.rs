@@ -1,8 +1,9 @@
-use std::{collections::BTreeMap, io::{BufRead, BufReader}, usize};
+use std::{collections::BTreeMap, fs::File, io::{BufRead, BufReader}, sync::{Arc, Mutex}, usize};
 
 use async_trait::async_trait;
+use indexmap::IndexMap;
 
-use crate::{data_matrix::DataMatrix, data_vector::DataVector, enums::error_types::DataLoaderError};
+use crate::{data_matrix::{DataMatrix, TDataMatrix}, data_vector::{DataVector, TDataVector, TDataVectorExt}, enums::error_types::DataLoaderError};
 
 use super::{data_loader_settings::DataLoaderSettings, DataLoader};
 
@@ -92,7 +93,7 @@ impl CSVLoader {
 
 #[async_trait]
 impl DataLoader for CSVLoader {
-    async fn load_from<'a>(&'a self, path: &'a str) -> Result<DataMatrix, DataLoaderError> {
+    /*async fn load_from<'a>(&'a self, path: &'a str) -> Result<DataMatrix, DataLoaderError> {
         let file: std::fs::File = std::fs::File::open(path).map_err(|e| DataLoaderError::FileRead(e.to_string()))?;
         let reader: BufReader<std::fs::File> = BufReader::new(file);
         let mut lines: Vec<String> = reader.lines().collect::<Result<Vec<_>, _>>().map_err(|e| DataLoaderError::GenericError(e.to_string()))?;
@@ -103,7 +104,7 @@ impl DataLoader for CSVLoader {
             lines.remove(0);
         }
 
-        let mut raw_columns: BTreeMap<String, Vec<String>> = headers
+        let mut raw_columns: IndexMap<String, Vec<String>> = headers
             .iter()
             .map(|h| (h.clone(), Vec::new()))
             .collect();
@@ -132,7 +133,7 @@ impl DataLoader for CSVLoader {
             }
         }
 
-        let mut columns = BTreeMap::new();
+        let mut columns = IndexMap::new();
 
         for (header, values) in raw_columns {
             let values = values[..values.len().saturating_sub(self.settings.skip_rows)].iter()
@@ -182,5 +183,147 @@ impl DataLoader for CSVLoader {
         }
 
         Ok(DataMatrix { columns, index })
+    }*/
+
+    async fn load_from<'a>(&'a self, path: &'a str) -> Result<DataMatrix, DataLoaderError> {
+        // Read file
+        let file = File::open(path)
+            .map_err(|e| DataLoaderError::GenericError(format!("Error while trying to open IO stream: {:#?}", e)))?;
+        let reader = BufReader::new(file);
+        let lines: Vec<String> = reader
+            .lines()
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| DataLoaderError::GenericError(format!("Error while trying to read lines: {:#?}", e)))?;
+    
+        // Remove blank lines if configured
+        let mut lines: Vec<String> = if self.settings.skip_blank_lines {
+            lines.into_iter().filter(|line| !line.trim().is_empty()).collect()
+        } else {
+            lines
+        };
+    
+        // Skip initial space
+        if self.settings.skip_initial_space {
+            lines = lines
+                .into_iter()
+                .map(|line| {
+                    line.split(self.settings.separator)
+                        .map(|s| s.trim().to_string())
+                        .collect::<Vec<_>>()
+                        .join(&self.settings.separator.to_string())
+                })
+                .collect();
+        }
+    
+        if lines.is_empty() {
+            return Err(DataLoaderError::GenericError("No lines found in file".into()));
+        }
+    
+        // Extract headers
+        let headers = self.get_headers(&lines)?;
+    
+        let mut data_lines = if lines.len() > 1 {
+            lines[1..].to_vec()
+        } else {
+            Vec::new()
+        };
+    
+        // Skip top and bottom rows
+        if data_lines.len() < self.settings.skip_rows + self.settings.skip_footer {
+            return Err(DataLoaderError::GenericError("Not enough lines after skipping".into()));
+        }
+    
+        data_lines = data_lines
+            .clone()
+            .into_iter()
+            .skip(self.settings.skip_rows)
+            .take(data_lines.len() - self.settings.skip_footer)
+            .collect();
+    
+        if self.settings.n_rows > 0 && self.settings.n_rows < data_lines.len() {
+            data_lines.truncate(self.settings.n_rows);
+        }
+    
+        // Parse raw cells into rows of Vec<String>
+        let mut rows: Vec<Vec<String>> = Vec::new();
+        for (i, line) in data_lines.iter().enumerate() {
+            let mut cells: Vec<String> = line.split(self.settings.separator).map(|s| s.to_string()).collect();
+    
+            // Remove index column if configured
+            if let Some(idx) = self.settings.index_col {
+                if idx < cells.len() {
+                    cells.remove(idx);
+                }
+            }
+    
+            // Ensure all rows are the same length
+            if i > 0 && cells.len() != rows[0].len() {
+                return Err(DataLoaderError::ColumnCountMismatch(format!(
+                    "Row {} has {} columns; expected {}",
+                    i + 1,
+                    cells.len(),
+                    rows[0].len()
+                )));
+            }
+    
+            rows.push(cells);
+        }
+    
+        // Transpose rows into columns
+        if rows.is_empty() {
+            return Err(DataLoaderError::GenericError("No data rows found".into()));
+        }
+    
+        let column_count = rows[0].len();
+        let mut columns: Vec<Vec<String>> = vec![Vec::with_capacity(rows.len()); column_count];
+        for row in rows {
+            for (i, cell) in row.into_iter().enumerate() {
+                columns[i].push(cell);
+            }
+        }
+    
+        // Reorder columns if header_indices is used
+        if !self.settings.header_indices.is_empty() {
+            let mut reordered = vec![Vec::new(); self.settings.header_indices.len()];
+            for (target_idx, &src_idx) in self.settings.header_indices.iter().enumerate() {
+                if src_idx >= columns.len() {
+                    return Err(DataLoaderError::ColumnCountMismatch(format!(
+                        "header_indices index {} out of bounds", src_idx
+                    )));
+                }
+                reordered[target_idx] = columns[src_idx].clone();
+            }
+            columns = reordered;
+        }
+    
+        // Build DataVectors with inferred types
+        let mut data_vectors: Vec<Arc<Mutex<dyn TDataVector>>> = Vec::new();
+        for (col_idx, column) in columns.into_iter().enumerate() {
+            let header = headers.get(col_idx).cloned().unwrap_or_else(|| format!("col_{}", col_idx));
+    
+            // Try parse f64
+            if let Some(parsed) = self.try_parse::<f64>(&column) {
+                let mut data_vec = DataVector::from_vec(parsed)?;
+                data_vec.add_label(&header);
+                data_vectors.push(Arc::new(Mutex::new(data_vec)));
+                continue;
+            }
+    
+            // Try parse bool
+            if let Some(parsed) = self.try_parse::<bool>(&column) {
+                let mut data_vec = DataVector::from_vec(parsed)?;
+                data_vec.add_label(&header);
+                data_vectors.push(Arc::new(Mutex::new(data_vec)));
+                continue;
+            }
+    
+            // Default to string
+            let mut data_vec = DataVector::from_vec(column)?;
+            data_vec.add_label(&header);
+            data_vectors.push(Arc::new(Mutex::new(data_vec)));
+        }
+    
+        Ok(DataMatrix::from_vec(data_vectors)?)
     }
+    
 }

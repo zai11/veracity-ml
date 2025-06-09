@@ -7,18 +7,12 @@ use super::settings_base::SettingsBase;
 
 
 
-pub trait RegressorBase<T: Num + Copy, D: Dimension, U> {
-    fn _fit(&mut self, x: &Array2<T>, y: &Array1<U>) -> Result<(), VeracityError>;
+pub trait RegressorBase<D: Dimension> {
+    fn fit(&mut self, x: &DataMatrix, y: &DataVector<f64>) -> Result<(), VeracityError>;
 
-    fn fit(&mut self, x: &DataMatrix, y: &DataVector) -> Result<(), VeracityError>;
+    fn predict(&self, x: &DataMatrix) -> Result<DataVector<f64>, VeracityError>;
 
-    fn _predict(&self, x: &Array2<T>) -> Result<Array1<U>, VeracityError>;
-
-    fn predict(&self, x: &DataMatrix) -> Result<DataVector, VeracityError>;
-
-    fn _score(&self, x: &Array2<T>, y: &Array1<U>) -> Result<f64, VeracityError>;
-
-    fn score(&self, x: &DataMatrix, y: &DataVector) -> Result<f64, VeracityError>;
+    fn score(&self, x: &DataMatrix, y: &DataVector<f64>) -> Result<f64, VeracityError>;
 
     fn add_settings<S: SettingsBase + 'static>(&mut self, settings: S) -> Result<(), VeracityError>;
 }

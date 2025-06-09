@@ -1,7 +1,9 @@
 use ndarray::Array1;
-use veracity_data::data_vector::DataVector;
+use veracity_data::data_vector::{DataVector, TDataVectorExt};
 
-pub fn _auroc<T, U>(proba_pred: &Array1<T>, actual: &Array1<U>, positive_class: &U) -> f64
+use crate::enums::errors::metric_errors::EvaluationMetricError;
+
+pub fn _auroc<T, U>(proba_pred: &Array1<T>, actual: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where
     T: PartialEq<U> + Into<f64> + Clone + Send + Sync + 'static,
     U: PartialEq + Clone + Send + Sync + 'static
@@ -11,6 +13,11 @@ where
         actual.len(),
         "Inputs must have the same length"
     );
+
+    let positive_class: &U = match actual.first() {
+        Some(val) => val,
+        None => return Ok(0.0),
+    };
 
     let mut paired: Vec<(f64, bool)> = proba_pred
         .iter()
@@ -25,7 +32,7 @@ where
     let total_negatives: f64 = paired.len() as f64 - total_positives;
 
     if total_positives == 0.0 || total_negatives == 0.0 {
-        return 0.0;
+        return Ok(0.0);
     }
 
     let mut tp: f64 = 0.0;
@@ -53,13 +60,13 @@ where
         auroc += dx * avg_y;
     }
 
-    auroc
+    Ok(auroc)
 }
 
-pub fn auroc<T, U>(proba_pred: &DataVector, actual: &DataVector, positive_class: &U) -> f64
+pub fn auroc<T, U>(proba_pred: &DataVector<T>, actual: &DataVector<U>) -> Result<f64, EvaluationMetricError>
 where
     T: PartialEq<U> + Into<f64> + Clone + Send + Sync + 'static,
     U: PartialEq + Clone + Send + Sync + 'static
 {
-    _auroc(&proba_pred.to_ndarray::<T>().unwrap(), &actual.to_ndarray::<U>().unwrap(), positive_class)
+    _auroc(&proba_pred.to_ndarray().unwrap(), &actual.to_ndarray().unwrap())
 }

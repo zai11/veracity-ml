@@ -1,7 +1,9 @@
-use ndarray::Array2;
-use veracity_data::data_matrix::DataMatrix;
+use ndarray::{Array1, Array2};
+use veracity_data::data_matrix::{DataMatrix, TDataMatrix};
 
-pub fn _lrap<T, U>(y_pred: &Array2<T>, y_true: &Array2<U>) -> f64
+use crate::enums::errors::metric_errors::EvaluationMetricError;
+
+pub fn _lrap<T, U>(y_pred: &Array2<T>, y_true: &Array2<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<bool> + Copy + Send + Sync + 'static,
@@ -43,10 +45,10 @@ where
         }
     }
 
-    total_lrap / n_samples as f64
+    Ok(total_lrap / n_samples as f64)
 }
 
-pub fn lrap<T, U>(proba_pred: DataMatrix, actual: DataMatrix) -> f64
+pub fn lrap<T, U>(proba_pred: DataMatrix, actual: DataMatrix) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<bool> + Copy + Send + Sync + 'static,

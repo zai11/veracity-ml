@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
 use ndarray::{Array1, Array2, ArrayBase, Dim, ViewRepr};
-use veracity_data::{data_matrix::DataMatrix, data_vector::DataVector};
+use veracity_data::{data_matrix::{DataMatrix, TDataMatrix}, data_vector::{DataVector, TDataVectorExt}};
+
+use crate::enums::errors::metric_errors::EvaluationMetricError;
 
 
-pub fn _calinski_harabasz_index<T, U>(data: &Array2<T>, labels: &Array1<U>) -> f64
+pub fn _calinski_harabasz_index<T, U>(data: &Array2<T>, labels: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where 
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Eq + std::hash::Hash + Clone + Ord
@@ -21,7 +23,7 @@ where
 
     let n_clusters: usize = label_map.len();
     if n_clusters <= 1 {
-        return 0.0;
+        return Ok(0.0);
     }
 
     let mut overall_mean: Vec<f64> = vec![0.0; n_features];
@@ -69,14 +71,14 @@ where
         }
     }
 
-    (between_dispersion / (n_clusters as f64 - 1.0))
-        / (within_dispersion / (n_samples - n_clusters as f64))
+    Ok((between_dispersion / (n_clusters as f64 - 1.0))
+        / (within_dispersion / (n_samples - n_clusters as f64)))
 }
 
-pub fn calinski_harabasz_index<T, U>(data: &DataMatrix, labels: &DataVector) -> f64 
+pub fn calinski_harabasz_index<T, U>(data: &DataMatrix, labels: &DataVector<U>) -> Result<f64, EvaluationMetricError> 
 where 
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Eq + std::hash::Hash + Clone + Ord + Send + Sync + 'static
 {
-    _calinski_harabasz_index(&data.to_ndarray::<T>().unwrap(), &labels.to_ndarray::<U>().unwrap())
+    _calinski_harabasz_index(&data.to_ndarray::<T>().unwrap(), &labels.to_ndarray().unwrap())
 }

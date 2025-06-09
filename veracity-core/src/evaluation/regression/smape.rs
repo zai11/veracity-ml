@@ -1,8 +1,10 @@
 use ndarray::Array1;
-use veracity_data::data_vector::DataVector;
+use veracity_data::data_vector::{DataVector, TDataVectorExt};
+
+use crate::enums::errors::metric_errors::EvaluationMetricError;
 
 
-pub fn _smape<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> f64
+pub fn _smape<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<f64> + Copy + Send + Sync + 'static,
@@ -14,7 +16,7 @@ where
     );
 
     if y_pred.is_empty() {
-        return f64::NAN;
+        return Ok(f64::NAN);
     }
 
     let mut smape_sum: f64 = 0.0;
@@ -30,13 +32,13 @@ where
         smape_sum += term;
     }
 
-    (smape_sum / n) * 100.0
+    Ok((smape_sum / n) * 100.0)
 }
 
-pub fn smape<T, U>(y_pred: &DataVector, y_actual: &DataVector) -> f64
+pub fn smape<T, U>(y_pred: &DataVector<T>, y_actual: &DataVector<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Into<f64> + Copy + Send + Sync + 'static
 {
-    _smape(&y_pred.to_ndarray::<T>().unwrap(), &y_actual.to_ndarray::<U>().unwrap())
+    _smape(&y_pred.to_ndarray().unwrap(), &y_actual.to_ndarray().unwrap())
 }

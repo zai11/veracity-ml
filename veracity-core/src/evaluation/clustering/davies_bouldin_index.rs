@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
 use ndarray::{Array1, Array2};
-use veracity_data::{data_matrix::DataMatrix, data_vector::DataVector};
+use veracity_data::{data_matrix::{DataMatrix, TDataMatrix}, data_vector::{DataVector, TDataVectorExt}};
 
-use crate::utility::distance::find_distance_euclidean;
+use crate::{enums::errors::metric_errors::EvaluationMetricError, utility::distance::find_distance_euclidean};
 
 
-pub fn _davies_bouldin_index<T, U>(data: &Array2<T>, labels: &Array1<U>) -> f64
+pub fn _davies_bouldin_index<T, U>(data: &Array2<T>, labels: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Ord + Clone + Send + Sync + 'static,
@@ -22,7 +22,7 @@ where
 
     let n_clusters: usize = clusters.len();
     if n_clusters <= 1 {
-        return 0.0;
+        return Ok(0.0);
     }
 
     let mut centroids: Vec<Vec<f64>> = Vec::new();
@@ -73,13 +73,13 @@ where
         dbi_sum += max_ratio;
     }
 
-    dbi_sum / n_clusters as f64
+    Ok(dbi_sum / n_clusters as f64)
 }
 
-pub fn davies_bouldin_index<T, U>(data: &DataMatrix, labels: &DataVector) -> f64 
+pub fn davies_bouldin_index<T, U>(data: &DataMatrix, labels: &DataVector<U>) -> Result<f64, EvaluationMetricError>
 where 
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Eq + std::hash::Hash + Clone + Ord + Send + Sync + 'static
 {
-    _davies_bouldin_index(&data.to_ndarray::<T>().unwrap(), &labels.to_ndarray::<U>().unwrap())
+    _davies_bouldin_index(&data.to_ndarray::<T>().unwrap(), &labels.to_ndarray().unwrap())
 }

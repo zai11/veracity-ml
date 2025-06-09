@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
 use ndarray::{Array1, Array2};
+use veracity_data::{data_matrix::{DataMatrix, TDataMatrix}, data_vector::{DataVector, TDataVectorExt}};
 
-use crate::utility::distance::find_distance_euclidean;
+use crate::{enums::errors::metric_errors::EvaluationMetricError, utility::distance::find_distance_euclidean};
 
 
-pub fn _dunn_index<T, U>(data: &Array2<T>, labels: &Array1<U>) -> f64
+pub fn _dunn_index<T, U>(data: &Array2<T>, labels: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where
     T: Into<f64> + Copy + Send + Sync + 'static,
     U: Ord + Clone + Send + Sync + 'static,
@@ -45,10 +46,18 @@ where
     }
 
     if max_diameter == 0.0 {
-        return 0.0;
+        return Ok(0.0);
     }
 
-    min_intercluster / max_diameter
+    Ok(min_intercluster / max_diameter)
+}
+
+pub fn dunn_index<T, U>(data: &DataMatrix, labels: &DataVector<U>) -> Result<f64, EvaluationMetricError>
+where 
+    T: Into<f64> + Copy + Send + Sync + 'static,
+    U: Eq + std::hash::Hash + Clone + Ord + Send + Sync + 'static
+{
+    _dunn_index(&data.to_ndarray::<T>().unwrap(), &labels.to_ndarray().unwrap())
 }
 
 fn mean_point(points: &[Array1<f64>]) -> Array1<f64> {

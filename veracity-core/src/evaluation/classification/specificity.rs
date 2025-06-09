@@ -1,8 +1,10 @@
 use ndarray::Array1;
-use veracity_data::data_vector::DataVector;
+use veracity_data::data_vector::{DataVector, TDataVectorExt};
+
+use crate::enums::errors::metric_errors::EvaluationMetricError;
 
 
-pub fn _specificity<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> f64
+pub fn _specificity<T, U>(y_pred: &Array1<T>, y_actual: &Array1<U>) -> Result<f64, EvaluationMetricError>
 where
     T: PartialEq<U> + Clone + Send + Sync + 'static,
     U: PartialEq + Clone + Send + Sync + 'static
@@ -10,12 +12,12 @@ where
     assert_eq!(y_pred.len(), y_actual.len(), "Arrays must be the same length.");
 
     if y_actual.len() == 0 {
-        return 0.0;
+        return Ok(0.0);
     }
 
     let positive_class: &U = match y_actual.first() {
         Some(val) => val,
-        None => return 0.0,
+        None => return Ok(0.0),
     };
 
     let mut true_negatives: f64 = 0.0;
@@ -32,16 +34,16 @@ where
     }
 
     if true_negatives + false_positives == 0.0 {
-        0.0
+        Ok(0.0)
     } else {
-        true_negatives / (true_negatives + false_positives)
+        Ok(true_negatives / (true_negatives + false_positives))
     }
 }
 
-pub fn specificity<T, U>(y_pred: &DataVector, y_actual: &DataVector) -> f64
+pub fn specificity<T, U>(y_pred: &DataVector<T>, y_actual: &DataVector<U>) -> Result<f64, EvaluationMetricError>
 where
     T: PartialEq<U> + Clone + Send + Sync + 'static,
     U: PartialEq + Clone + Send + Sync + 'static
 {
-    _specificity(&y_pred.to_ndarray::<T>().unwrap(), &y_actual.to_ndarray::<U>().unwrap())
+    _specificity(&y_pred.to_ndarray().unwrap(), &y_actual.to_ndarray().unwrap())
 }
