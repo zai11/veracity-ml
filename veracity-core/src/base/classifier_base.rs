@@ -1,9 +1,4 @@
-use std::collections::BTreeMap;
-
-use ndarray::Array1;
-use ndarray::Array2;
 use ndarray::Dimension;
-use num_traits::Num;
 use veracity_data::data_matrix::DataMatrix;
 use veracity_data::data_vector::DataVector;
 use veracity_types::errors::VeracityError;

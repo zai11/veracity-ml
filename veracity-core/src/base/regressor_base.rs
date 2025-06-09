@@ -1,5 +1,4 @@
-use ndarray::{Array1, Array2, Dimension};
-use num_traits::Num;
+use ndarray::Dimension;
 use veracity_data::{data_matrix::DataMatrix, data_vector::DataVector};
 use veracity_types::errors::VeracityError;
 

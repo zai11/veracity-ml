@@ -1,7 +1,6 @@
-use std::{collections::BTreeMap, fs::File, io::{BufRead, BufReader}, sync::{Arc, Mutex}, usize};
+use std::{fs::File, io::{BufRead, BufReader}, sync::{Arc, Mutex}, usize};
 
 use async_trait::async_trait;
-use indexmap::IndexMap;
 
 use crate::{data_matrix::{DataMatrix, TDataMatrix}, data_vector::{DataVector, TDataVector, TDataVectorExt}, enums::error_types::DataLoaderError};
 

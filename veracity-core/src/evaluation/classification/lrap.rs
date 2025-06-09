@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use ndarray::{Array2};
 use veracity_data::data_matrix::{DataMatrix, TDataMatrix};
 
 use crate::enums::errors::metric_errors::EvaluationMetricError;
